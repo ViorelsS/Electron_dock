@@ -1,0 +1,52 @@
+<!-- TODO: dire a chat la situazione attuale -->
+
+<div
+  class="fixed top-0 left-1/2 transform -translate-x-1/2 w-full max-w-screen-lg bg-gray-800 rounded-b-lg shadow-lg flex items-center justify-between py-2 px-4"
+>
+  <!-- Selettore per passare tra le sezioni -->
+  <div class="flex space-x-4">
+    <button
+      class="text-white px-3 py-2 rounded hover:bg-gray-700"
+      (click)="activeSection = 'apps'"
+      [class.bg-gray-700]="activeSection === 'apps'"
+    >
+      Applicazioni
+    </button>
+    <button
+      class="text-white px-3 py-2 rounded hover:bg-gray-700"
+      (click)="activeSection = 'files'"
+      [class.bg-gray-700]="activeSection === 'files'"
+    >
+      Files
+    </button>
+  </div>
+
+  <!-- Contenuto della dock -->
+  <div class="flex-1 flex items-center justify-center">
+    <!-- Sezione collegamenti -->
+    <div *ngIf="activeSection === 'apps'" class="flex space-x-4">
+      <div
+        *ngFor="let app of apps"
+        class="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center hover:scale-110 transform transition"
+        (dblclick)="openApp(app)"
+      >
+        <img [src]="app.icon" alt="{{ app.name }}" class="w-10 h-10" />
+      </div>
+    </div>
+
+    <!-- Sezione file -->
+    <div *ngIf="activeSection === 'files'" class="flex space-x-4">
+      <div
+        *ngFor="let file of files"
+        class="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center hover:scale-110 transform transition"
+        (dblclick)="openFile(file)"
+      >
+        <img
+          src="assets/file-icon.png"
+          alt="{{ file.name }}"
+          class="w-10 h-10"
+        />
+      </div>
+    </div>
+  </div>
+</div>
