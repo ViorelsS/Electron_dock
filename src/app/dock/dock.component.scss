@@ -1,10 +1,45 @@
 /* Stile generale della dock */
 .fixed {
   z-index: 50;
+  top: 0; /* Fissa la barra in alto */
 }
 button {
   transition: background-color 0.3s ease, transform 0.2s ease;
 }
 button:hover {
   transform: scale(1.1);
+}
+
+/* Nasconde completamente la dock quando non visibile */
+.opacity-0 {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+/* Disabilita interazioni quando la dock non è visibile */
+.pointer-events-none {
+  pointer-events: none;
+}
+
+/* Transizione fluida per la visibilità */
+.transition-opacity {
+  transition: opacity 0.3s ease;
+}
+
+.fixed {
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 0.3s ease;
+}
+
+.dropzone-active {
+  background-color: rgba(
+    255,
+    255,
+    255,
+    0.1
+  ); /* Evidenzia leggermente lo sfondo */
+  border: 2px dashed #fff; /* Mostra un bordo tratteggiato */
+  transition: background-color 0.3s ease;
 }
