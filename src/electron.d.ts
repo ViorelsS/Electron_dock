@@ -4,14 +4,7 @@ export interface ElectronAPI {
     on: (channel: string, listener: (...args: any[]) => void) => void;
     invoke: (channel: string, data?: any) => Promise<any>;
   };
-  dialog: {
-    showOpenDialog: (
-      options: any
-    ) => Promise<{ canceled: boolean; filePaths: string[] }>;
-  };
-  path: {
-    resolve: (...args: string[]) => string;
-  };
+  showFilePath: (data?: any) => Promise<string>;
 }
 
 declare global {

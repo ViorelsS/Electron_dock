@@ -1,9 +1,9 @@
 import { CommonModule } from '@angular/common';
 import {
-  Component,
-  NgZone,
   ChangeDetectorRef,
-  ɵSSR_CONTENT_INTEGRITY_MARKER,
+  Component,
+  HostListener,
+  NgZone,
 } from '@angular/core';
 
 interface App {
@@ -20,11 +20,9 @@ interface App {
   styleUrl: './dock.component.scss',
 })
 export class DockComponent {
-  activeSection: 'apps' | 'files' = 'apps';
   isVisible = false;
   isInteracting = false;
   isDragging = false;
-
   apps: App[] = [];
 
   constructor(private zone: NgZone, private cdr: ChangeDetectorRef) {
@@ -52,38 +50,12 @@ export class DockComponent {
         });
       });
     }
-  }
-
-  // Rileva l'evento dragover
-  onDragOver(event: DragEvent) {
-    event.preventDefault();
-    this.isDragging = true;
-  }
-
-  // Rileva l'evento drop
-  onDrop(event: DragEvent) {
-    event.preventDefault();
-
-    console.log('EVENT', event.dataTransfer);
-    const files = event.dataTransfer?.files;
-    window.electron.ipcRenderer.send('files-dropped', event);
-
-    // if (files && files.length > 0) {
-    //   // const filePaths = Array.from(files).map((file) => file.path);
-    //   // Invia i percorsi dei file al processo principale di Electron
-    //   // window.electron.ipcRenderer.send('files-dropped', filePaths);
-    // }
-    this.isDragging = false;
-  }
-
-  // Apre un'applicazione
-  openApp(app: App) {
-    console.log('Apertura app:', app.name);
-    if (app.path) {
-      window.electron.ipcRenderer.send('file-open', app.path);
-    } else {
-      console.error('Percorso applicazione non disponibile.');
-    }
+    window.electron.ipcRenderer.on('file-paths', (updatedFileList) => {
+      this.zone.run(() => {
+        console.log('Percorsi dei file:', updatedFileList);
+        // Puoi ora utilizzare updatedFileList per avviare i file
+      });
+    });
   }
 
   // Rileva se il mouse entra nella dock
@@ -97,25 +69,26 @@ export class DockComponent {
     this.isInteracting = false;
     this.isVisible = false;
   }
-
-  // Carica le applicazioni salvate
-  loadApps() {
-    window.electron.ipcRenderer.invoke('load-apps').then((apps) => {
-      this.apps = apps;
-      console.log('Applicazioni caricate:', this.apps);
-      this.cdr.detectChanges();
-    });
+  @HostListener('dragover', ['$event'])
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
   }
 
-  // Salva le applicazioni correnti
-  saveApps() {
-    window.electron.ipcRenderer.send('save-apps', this.apps);
-  }
+  @HostListener('drop', ['$event'])
+  onDrop(event: DragEvent) {
+    event.preventDefault();
 
-  // Rimuove un'applicazione
-  removeApp(appToRemove: App) {
-    this.apps = this.apps.filter((app) => app.path !== appToRemove.path);
-    this.saveApps(); // Salva automaticamente le app aggiornate
-    this.cdr.detectChanges();
+    const files = event.dataTransfer?.files;
+    if (files?.length) {
+      const fileList = [];
+      for (let i = 0; i < files.length; i++) {
+        fileList.push({
+          name: files[i].name,
+          path: (files[i] as any).path || '', // Aggiungi un fallback per il percorso
+        });
+      }
+      console.log('NEL COMPONENT', fileList);
+      (window as any).electron.ipcRenderer.send('file-dropped', fileList);
+    }
   }
 }
