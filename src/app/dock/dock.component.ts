@@ -31,40 +31,42 @@ export class DockComponent {
         this.zone.run(() => {
           const { x, y, screenBounds } = data;
 
-          const threshold = 50; // Soglia di altezza dal bordo superiore
-          const centerWidth = screenBounds.width / 3; // Un terzo centrale dello schermo
+          const threshold = 50;
+          const centerWidth = screenBounds.width / 3;
 
           const isInTopCenter =
-            y <= screenBounds.y + threshold && // Vicino al bordo superiore
-            x >= screenBounds.x + (screenBounds.width - centerWidth) / 2 && // Dentro l'inizio della zona centrale
-            x <= screenBounds.x + (screenBounds.width + centerWidth) / 2; // Fine della zona centrale
+            y <= screenBounds.y + threshold &&
+            x >= screenBounds.x + (screenBounds.width - centerWidth) / 2 &&
+            x <= screenBounds.x + (screenBounds.width + centerWidth) / 2;
 
-          // La barra appare se è nella zona centrale e non stai interagendo
           if (isInTopCenter || this.isInteracting) {
             this.isVisible = true;
           } else {
             this.isVisible = false;
           }
 
-          this.cdr.detectChanges(); // Forza il cambio nel DOM
+          this.cdr.detectChanges();
         });
       });
     }
+    window.electron.ipcRenderer.on('file-path-received', (path) => {
+      this.zone.run(() => {
+        console.log('Percorso del file ricevuto:', path);
+      });
+    });
+
     window.electron.ipcRenderer.on('file-paths', (updatedFileList) => {
       this.zone.run(() => {
         console.log('Percorsi dei file:', updatedFileList);
-        // Puoi ora utilizzare updatedFileList per avviare i file
       });
     });
   }
 
-  // Rileva se il mouse entra nella dock
   onMouseEnter() {
     this.isInteracting = true;
     this.isVisible = true;
   }
 
-  // Rileva se il mouse lascia la dock
   onMouseLeave() {
     this.isInteracting = false;
     this.isVisible = false;
@@ -84,7 +86,7 @@ export class DockComponent {
       for (let i = 0; i < files.length; i++) {
         fileList.push({
           name: files[i].name,
-          path: (files[i] as any).path || '', // Aggiungi un fallback per il percorso
+          path: (files[i] as any).path || '',
         });
       }
       console.log('NEL COMPONENT', fileList);
