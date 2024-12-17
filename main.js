@@ -1,5 +1,12 @@
-const { app, BrowserWindow, screen, ipcMain, shell } = require("electron");
+const {
+  app,
+  BrowserWindow,
+  screen,
+  ipcMain,
+  nativeImage,
+} = require("electron");
 const path = require("path");
+const extractFileIcon = require("extract-file-icon");
 
 let mainWindow;
 
@@ -60,15 +67,37 @@ app.on("activate", () => {
   }
 });
 
-ipcMain.on("file-dropped", (event, fileList) => {
-  const updatedFileList = fileList.map((file) => ({
-    ...file,
-    path: path.resolve(file.path || file.name), // Ottieni il percorso completo del file
-  }));
-  console.log("Percorsi dei file droppati:", updatedFileList);
-  event.sender.send("file-paths", updatedFileList);
+ipcMain.on("file-dropped", async (event, fileList) => {
+  try {
+    const updatedFileList = await Promise.all(
+      fileList.map(async (file) => {
+        const iconBuffer = await extractFileIcon(file.path || file.name, 64);
+        const icon = nativeImage.createFromBuffer(iconBuffer);
+        return {
+          ...file,
+          path: path.resolve(file.path || file.name),
+          icon: icon.toDataURL(),
+        };
+      })
+    );
+    console.log("Percorsi dei file droppati:", updatedFileList);
+    event.sender.send("file-paths", updatedFileList);
+  } catch (error) {
+    console.error("Error extracting file icon:", error);
+  }
 });
 
 ipcMain.handle("get-file-path", (event, file) => {
   return path.resolve(file.path || file.name);
 });
+
+// ipcMain.handle("get-app-icon", async (event, filePath) => {
+//   try {
+//     const iconBuffer = await extractFileIcon(filePath, 64);
+//     const icon = nativeImage.createFromBuffer(iconBuffer);
+//     return icon.toDataURL();
+//   } catch (error) {
+//     console.error("Error extracting file icon:", error);
+//     throw error;
+//   }
+// });

@@ -57,7 +57,14 @@ export class DockComponent {
 
     window.electron.ipcRenderer.on('file-paths', (updatedFileList) => {
       this.zone.run(() => {
-        console.log('Percorsi dei file:', updatedFileList);
+        updatedFileList.forEach((file: App) => {
+          this.apps.push({
+            name: file.name,
+            icon: file.icon,
+            path: file.path,
+          });
+        });
+        this.cdr.detectChanges();
       });
     });
   }

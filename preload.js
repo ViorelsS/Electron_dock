@@ -8,7 +8,10 @@ contextBridge.exposeInMainWorld("electron", {
   },
   showFilePath: (file) => {
     ipcRenderer.invoke("get-file-path", file).then((path) => {
-      ipcRenderer.send("file-path-received", path); // Invia il percorso del file al frontend
+      ipcRenderer.send("file-path-received", path);
     });
+  },
+  getAppIcon: (filePath) => {
+    return ipcRenderer.invoke("get-app-icon", filePath);
   },
 });
