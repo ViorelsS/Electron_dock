@@ -19,3 +19,7 @@ declare global {
     electron: ElectronAPI;
   }
 }
+
+export interface FileWithPath extends File {
+  path: string;
+}

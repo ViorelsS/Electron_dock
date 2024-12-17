@@ -1,43 +1,72 @@
-const {
-  app,
-  BrowserWindow,
-  screen,
-  ipcMain,
-  dialog,
-  shell,
-} = require("electron");
+const { app, BrowserWindow, screen, ipcMain, shell } = require("electron");
 const path = require("path");
 const fs = require("fs");
-const fse = require("fs-extra"); // Libreria per spostare file facilmente
+const extract = require("extract-file-icon");
+
+const appsFilePath = path.join(__dirname, "apps.json");
 
 let mainWindow;
 
-ipcMain.on("file-open", (event, filePath) => {
-  console.log("Tentativo di aprire il file:", filePath);
-
-  if (!fs.existsSync(filePath)) {
-    console.error("Il file non esiste:", filePath);
-    event.reply("file-open-response", {
-      success: false,
-      error: "File not found",
-    });
-    return;
-  }
-
-  shell
-    .openPath(filePath)
-    .then(() => {
-      console.log("File aperto con successo:", filePath);
-      event.reply("file-open-response", { success: true });
-    })
-    .catch((err) => {
-      console.error("Errore durante l'apertura del file:", err);
-      event.reply("file-open-response", { success: false, error: err.message });
-    });
+ipcMain.on("files-dropped", (event, files) => {
+  console.log("File ricevuti:", files);
 });
 
-ipcMain.handle("show-open-dialog", async (event, options) => {
-  return await dialog.showOpenDialog(options);
+/* RECUPERARE ICONA APP */
+ipcMain.handle("get-icon", async (event, filePath) => {
+  try {
+    const iconPath = extract(filePath, 32);
+    console.log("Icona recuperata per", filePath, ":", iconPath);
+    return iconPath;
+  } catch (err) {
+    console.error("Errore nel recupero dell'icona:", err);
+    return null;
+  }
+});
+
+ipcMain.on("file-open", (event, filePath) => {
+  console.log("Tentativo di apertura applicazione:", filePath);
+
+  if (filePath) {
+    shell
+      .openPath(filePath)
+      .then(() => console.log("Applicazione aperta con successo:", filePath))
+      .catch((err) => console.error("Errore durante l'apertura:", err));
+  } else {
+    console.error("Percorso non valido:", filePath);
+  }
+});
+
+ipcMain.on("files-dropped", (event, filePaths) => {
+  console.log("File ricevuti:", filePaths);
+  // Ad esempio, puoi leggere i file, estrarre icone, ecc.
+});
+
+// Salva la lista delle applicazioni
+ipcMain.on("save-apps", (event, apps) => {
+  console.log("Salvataggio delle applicazioni:", apps);
+  fs.writeFileSync(appsFilePath, JSON.stringify(apps, null, 2));
+});
+
+// Carica la lista delle applicazioni
+ipcMain.handle("load-apps", async () => {
+  console.log("Tentativo di caricamento delle applicazioni...");
+  if (fs.existsSync(appsFilePath)) {
+    console.log("File delle applicazioni trovato:", appsFilePath);
+    try {
+      const apps = JSON.parse(fs.readFileSync(appsFilePath, "utf-8"));
+      console.log("Applicazioni caricate:", apps);
+      return apps;
+    } catch (err) {
+      console.error(
+        "Errore durante la lettura del file delle applicazioni:",
+        err
+      );
+      return [];
+    }
+  } else {
+    console.warn("File delle applicazioni non trovato:", appsFilePath);
+    return [];
+  }
 });
 
 function createWindow() {
@@ -49,6 +78,7 @@ function createWindow() {
     x: Math.round((width - windowWidth) / 2),
     y: 0,
     width: windowWidth,
+    // height: 70,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
@@ -79,39 +109,8 @@ function createWindow() {
       y: cursor.y,
       screenBounds: bounds,
     });
-  }, 100);
+  }, 300);
 }
-
-ipcMain.on("file-dropped", (event, file) => {
-  console.log("file-dropped ricevuto:", file);
-
-  if (!file.path || !fs.existsSync(file.path)) {
-    console.error("Percorso file non valido o inesistente:", file.path);
-    event.reply("file-moved", { success: false, error: "File not found" });
-    return;
-  }
-
-  const tmpDir = path.join(app.getPath("userData"), "tmp");
-  const destination = path.join(tmpDir, file.name);
-
-  try {
-    // Assicurati che la cartella temporanea esista
-    fse.ensureDirSync(tmpDir);
-
-    // Sposta il file
-    fse.moveSync(file.path, destination, { overwrite: true });
-
-    console.log(`File spostato in: ${destination}`);
-    event.reply("file-moved", {
-      success: true,
-      fileName: file.name,
-      destination,
-    });
-  } catch (error) {
-    console.error("Errore durante lo spostamento del file:", error);
-    event.reply("file-moved", { success: false, error: error.message });
-  }
-});
 
 app.on("ready", createWindow);
 
@@ -124,26 +123,5 @@ app.on("window-all-closed", () => {
 app.on("activate", () => {
   if (mainWindow === null) {
     createWindow();
-  }
-});
-
-ipcMain.handle("get-tmp-files", async () => {
-  const tmpDir = path.join(app.getPath("userData"), "tmp");
-
-  try {
-    // Assicurati che la cartella tmp esista
-    fse.ensureDirSync(tmpDir);
-
-    // Leggi i file nella cartella tmp
-    const files = fs.readdirSync(tmpDir).map((fileName) => ({
-      name: fileName,
-      path: path.join(tmpDir, fileName),
-    }));
-
-    console.log("File trovati nella cartella tmp:", files);
-    return { success: true, files };
-  } catch (error) {
-    console.error("Errore durante la lettura della cartella tmp:", error);
-    return { success: false, error: error.message };
   }
 });

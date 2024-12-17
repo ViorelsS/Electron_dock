@@ -1,5 +1,16 @@
 import { CommonModule } from '@angular/common';
-import { Component, NgZone, ChangeDetectorRef } from '@angular/core';
+import {
+  Component,
+  NgZone,
+  ChangeDetectorRef,
+  ɵSSR_CONTENT_INTEGRITY_MARKER,
+} from '@angular/core';
+
+interface App {
+  name: string;
+  icon: string | 'assets/app-icon.png';
+  path: string;
+}
 
 @Component({
   selector: 'app-dock',
@@ -14,8 +25,9 @@ export class DockComponent {
   isInteracting = false;
   isDragging = false;
 
+  apps: App[] = [];
+
   constructor(private zone: NgZone, private cdr: ChangeDetectorRef) {
-    +this.loadFilesFromTmp();
     if (window.electron) {
       window.electron.ipcRenderer.on('mouse-position', (data) => {
         this.zone.run(() => {
@@ -39,24 +51,41 @@ export class DockComponent {
           this.cdr.detectChanges(); // Forza il cambio nel DOM
         });
       });
-
-      // Listener per il file spostato
-      window.electron.ipcRenderer.on('file-moved', (response) => {
-        this.zone.run(() => {
-          console.log('Risposta ricevuta:', response);
-          if (response.success) {
-            this.files.push({
-              name: response.fileName,
-              path: response.destination,
-            });
-            console.log('File aggiunto alla lista:', response.fileName);
-          } else {
-            console.error('Errore durante il trasferimento:', response.error);
-          }
-        });
-      });
     }
   }
+
+  // Rileva l'evento dragover
+  onDragOver(event: DragEvent) {
+    event.preventDefault();
+    this.isDragging = true;
+  }
+
+  // Rileva l'evento drop
+  onDrop(event: DragEvent) {
+    event.preventDefault();
+
+    console.log('EVENT', event.dataTransfer);
+    const files = event.dataTransfer?.files;
+    window.electron.ipcRenderer.send('files-dropped', event);
+
+    // if (files && files.length > 0) {
+    //   // const filePaths = Array.from(files).map((file) => file.path);
+    //   // Invia i percorsi dei file al processo principale di Electron
+    //   // window.electron.ipcRenderer.send('files-dropped', filePaths);
+    // }
+    this.isDragging = false;
+  }
+
+  // Apre un'applicazione
+  openApp(app: App) {
+    console.log('Apertura app:', app.name);
+    if (app.path) {
+      window.electron.ipcRenderer.send('file-open', app.path);
+    } else {
+      console.error('Percorso applicazione non disponibile.');
+    }
+  }
+
   // Rileva se il mouse entra nella dock
   onMouseEnter() {
     this.isInteracting = true;
@@ -69,101 +98,24 @@ export class DockComponent {
     this.isVisible = false;
   }
 
-  onDragOver(event: DragEvent) {
-    event.preventDefault();
-    this.isDragging = true; // Attiva lo stato di drag
+  // Carica le applicazioni salvate
+  loadApps() {
+    window.electron.ipcRenderer.invoke('load-apps').then((apps) => {
+      this.apps = apps;
+      console.log('Applicazioni caricate:', this.apps);
+      this.cdr.detectChanges();
+    });
   }
 
-  onDrop(event: DragEvent) {
-    event.preventDefault();
-    this.isDragging = false;
-
-    const files = event.dataTransfer?.files;
-
-    if (files && files.length > 0) {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        console.log('File trascinato:', file);
-
-        // Ottieni il percorso del file usando dialog
-        window.electron.dialog
-          .showOpenDialog({
-            properties: ['openFile'],
-            defaultPath: file.name,
-          })
-          .then((result) => {
-            if (!result.canceled && result.filePaths.length > 0) {
-              const filePath = result.filePaths[0];
-              console.log('Percorso confermato:', filePath);
-
-              window.electron.ipcRenderer.send('file-dropped', {
-                name: file.name,
-                path: filePath,
-              });
-            }
-          })
-          .catch((err) => console.error('Errore durante il dialog:', err));
-      }
-    } else {
-      console.warn('Nessun file rilevato durante il drop.');
-    }
+  // Salva le applicazioni correnti
+  saveApps() {
+    window.electron.ipcRenderer.send('save-apps', this.apps);
   }
 
-  onDragLeave() {
-    this.isDragging = false; // Ripristina lo stato
-  }
-
-  // Mock apps
-  apps = [
-    { name: 'App1', icon: 'assets/app1-icon.png', command: 'path/to/app1' },
-    { name: 'App2', icon: 'assets/app2-icon.png', command: 'path/to/app2' },
-  ];
-
-  loadFilesFromTmp() {
-    window.electron.ipcRenderer
-      .invoke('get-tmp-files') // Invoca l'evento nel main process
-      .then((response) => {
-        if (response.success) {
-          console.log('File caricati dalla cartella tmp:', response.files);
-          this.files = response.files;
-        } else {
-          console.error(
-            'Errore durante il caricamento dei file:',
-            response.error
-          );
-        }
-      })
-      .catch((err) => {
-        console.error(
-          'Errore generale durante la richiesta dei file tmp:',
-          err
-        );
-      });
-  }
-
-  files: { name: string; path: string }[] = [];
-
-  openApp(app: { name: string; command: string }) {
-    console.log(`Apri applicazione: ${app.name} (${app.command})`);
-    // TODO: eseguire il comando con electron
-  }
-
-  openFile(file: { name: string; path: string }) {
-    console.log(`Tentativo di aprire il file: ${file.name} (${file.path})`);
-
-    if (file.path) {
-      window.electron.ipcRenderer.send('file-open', file.path);
-
-      // Ricevi la risposta
-      window.electron.ipcRenderer.on('file-open-response', (response) => {
-        if (response.success) {
-          console.log('File aperto con successo.');
-        } else {
-          console.error("Errore durante l'apertura del file:", response.error);
-        }
-      });
-    } else {
-      console.error('Percorso del file non disponibile.');
-    }
+  // Rimuove un'applicazione
+  removeApp(appToRemove: App) {
+    this.apps = this.apps.filter((app) => app.path !== appToRemove.path);
+    this.saveApps(); // Salva automaticamente le app aggiornate
+    this.cdr.detectChanges();
   }
 }
