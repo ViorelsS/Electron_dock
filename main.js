@@ -1,6 +1,7 @@
 const { app, BrowserWindow, screen, ipcMain } = require("electron");
 const path = require("path");
 const { exec } = require("child_process");
+const fs = require("fs");
 
 let mainWindow;
 
@@ -67,4 +68,18 @@ ipcMain.on("file-path", (event, filePath) => {
 
 ipcMain.on("launch-app", (event, appPath) => {
   exec(`"${appPath}"`);
+});
+
+ipcMain.handle("read-apps", async () => {
+  const filePath = path.join(__dirname, "apps.json");
+  if (!fs.existsSync(filePath)) {
+    fs.writeFileSync(filePath, JSON.stringify([]));
+  }
+  const data = fs.readFileSync(filePath, "utf-8");
+  return JSON.parse(data);
+});
+
+ipcMain.handle("write-apps", async (event, apps) => {
+  const filePath = path.join(__dirname, "apps.json");
+  fs.writeFileSync(filePath, JSON.stringify(apps, null, 2));
 });

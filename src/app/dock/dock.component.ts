@@ -4,6 +4,7 @@ import {
   Component,
   HostListener,
   NgZone,
+  OnInit,
 } from '@angular/core';
 
 interface App {
@@ -19,7 +20,7 @@ interface App {
   templateUrl: './dock.component.html',
   styleUrl: './dock.component.scss',
 })
-export class DockComponent {
+export class DockComponent implements OnInit {
   isVisible = false;
   isInteracting = false;
   isDragging = false;
@@ -51,6 +52,13 @@ export class DockComponent {
     }
   }
 
+  async ngOnInit() {
+    if (window.electron) {
+      this.apps = await window.electron.ipcRenderer.invoke('read-apps');
+      this.cdr.detectChanges();
+    }
+  }
+
   onMouseEnter() {
     this.isInteracting = true;
     this.isVisible = true;
@@ -68,7 +76,7 @@ export class DockComponent {
   }
 
   @HostListener('drop', ['$event'])
-  onDrop(event: DragEvent) {
+  async onDrop(event: DragEvent) {
     event.preventDefault();
     event.stopPropagation();
     this.isDragging = false;
@@ -83,6 +91,8 @@ export class DockComponent {
         path: newPath,
         icon: 'app-icon.png',
       });
+      await window.electron.ipcRenderer.invoke('write-apps', this.apps);
+      this.cdr.detectChanges();
     }
   }
 
