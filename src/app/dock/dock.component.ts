@@ -49,24 +49,6 @@ export class DockComponent {
         });
       });
     }
-    window.electron.ipcRenderer.on('file-path-received', (path) => {
-      this.zone.run(() => {
-        console.log('Percorso del file ricevuto:', path);
-      });
-    });
-
-    window.electron.ipcRenderer.on('file-paths', (updatedFileList) => {
-      this.zone.run(() => {
-        updatedFileList.forEach((file: App) => {
-          this.apps.push({
-            name: file.name,
-            icon: file.icon,
-            path: file.path,
-          });
-        });
-        this.cdr.detectChanges();
-      });
-    });
   }
 
   onMouseEnter() {
@@ -81,17 +63,29 @@ export class DockComponent {
   @HostListener('dragover', ['$event'])
   onDragOver(event: DragEvent): void {
     event.preventDefault();
+    this.isDragging = true;
+    this.isInteracting = true;
   }
 
   @HostListener('drop', ['$event'])
   onDrop(event: DragEvent) {
     event.preventDefault();
     this.isDragging = false;
+    this.isInteracting = false;
 
     if (event.dataTransfer && event.dataTransfer.files.length > 0) {
       const file = event.dataTransfer.files[0];
       const newPath = window.electron.getPathForFile(file);
       console.log('New path: ', newPath);
+      this.apps.push({
+        name: file.name,
+        path: newPath,
+        icon: 'app-icon.png',
+      });
     }
+  }
+
+  openApp(app: App) {
+    window.electron.ipcRenderer.send('launch-app', app.path);
   }
 }

@@ -22,8 +22,9 @@
         <div
           *ngFor="let app of apps"
           class="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center hover:scale-110 transform transition hover:bg-gray-600"
+          (click)="openApp(app)"
         >
-          <img src="favicon.ico" alt="{{ app.name }}" class="w-10 h-10" />
+          <img src="app-icon.png" alt="{{ app.name }}" class="w-10 h-10" />
         </div>
       </div>
     </div>

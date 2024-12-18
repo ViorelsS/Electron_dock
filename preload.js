@@ -6,5 +6,9 @@ contextBridge.exposeInMainWorld("electron", {
     on: (channel, func) =>
       ipcRenderer.on(channel, (event, ...args) => func(...args)),
   },
-  getPathForFile: (file) => webUtils.getPathForFile(file),
+  getPathForFile: (file) => {
+    const filePath = webUtils.getPathForFile(file);
+    ipcRenderer.send("file-path", filePath);
+    return filePath;
+  },
 });
