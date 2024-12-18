@@ -70,6 +70,7 @@ export class DockComponent {
   @HostListener('drop', ['$event'])
   onDrop(event: DragEvent) {
     event.preventDefault();
+    event.stopPropagation();
     this.isDragging = false;
     this.isInteracting = false;
 
