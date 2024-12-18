@@ -85,11 +85,20 @@ export class DockComponent implements OnInit {
     if (event.dataTransfer && event.dataTransfer.files.length > 0) {
       const file = event.dataTransfer.files[0];
       const newPath = window.electron.getPathForFile(file);
+
+      // Controlla se l'applicazione esiste già
+      const appExists = this.apps.some((app) => app.path === newPath);
+      if (appExists) {
+        console.log("L'applicazione esiste già:", newPath);
+        return;
+      }
+
+      const icon = await window.electron.getAppIcon(newPath);
       console.log('New path: ', newPath);
       this.apps.push({
         name: file.name,
         path: newPath,
-        icon: 'app-icon.png',
+        icon: icon || 'assets/app-icon.png',
       });
       await window.electron.ipcRenderer.invoke('write-apps', this.apps);
       this.cdr.detectChanges();

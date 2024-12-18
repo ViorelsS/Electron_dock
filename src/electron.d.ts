@@ -5,6 +5,7 @@ export interface ElectronAPI {
     invoke: (channel: string, data?: any) => Promise<any>;
   };
   getPathForFile: (data: any) => string;
+  getAppIcon: (data: any) => any;
 }
 
 declare global {

@@ -1,7 +1,14 @@
-const { app, BrowserWindow, screen, ipcMain } = require("electron");
+const {
+  app,
+  BrowserWindow,
+  screen,
+  ipcMain,
+  nativeImage,
+} = require("electron");
 const path = require("path");
 const { exec } = require("child_process");
 const fs = require("fs");
+const ws = require("windows-shortcuts");
 
 let mainWindow;
 
@@ -75,6 +82,7 @@ ipcMain.handle("read-apps", async () => {
   if (!fs.existsSync(filePath)) {
     fs.writeFileSync(filePath, JSON.stringify([]));
   }
+
   const data = fs.readFileSync(filePath, "utf-8");
   return JSON.parse(data);
 });
@@ -82,4 +90,40 @@ ipcMain.handle("read-apps", async () => {
 ipcMain.handle("write-apps", async (event, apps) => {
   const filePath = path.join(__dirname, "apps.json");
   fs.writeFileSync(filePath, JSON.stringify(apps, null, 2));
+});
+
+const getIconPathFromShortcut = (filePath) => {
+  return new Promise((resolve, reject) => {
+    ws.query(filePath, (err, options) => {
+      if (err) {
+        console.error("Errore nell'ottenere l'icona:", err);
+        resolve(null);
+      } else {
+        const iconPath = options.icon || options.target;
+        if (iconPath && fs.existsSync(iconPath)) {
+          resolve(iconPath);
+        } else {
+          console.warn(
+            `Icona non trovata per ${filePath}, utilizzo dell'icona predefinita.`
+          );
+          resolve(null);
+        }
+      }
+    });
+  });
+};
+
+ipcMain.handle("get-app-icon", async (event, filePath) => {
+  try {
+    const iconPath = await getIconPathFromShortcut(filePath);
+    if (iconPath) {
+      const icon = nativeImage.createFromPath(iconPath);
+      return icon.toDataURL();
+    } else {
+      return null;
+    }
+  } catch (error) {
+    console.error("Errore nell'ottenere l'icona:", error);
+    return null;
+  }
 });

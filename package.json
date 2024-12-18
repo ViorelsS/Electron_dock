@@ -21,6 +21,7 @@
     "extract-file-icon": "^0.3.2",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
+    "windows-shortcuts": "^0.1.6",
     "zone.js": "~0.15.0"
   },
   "devDependencies": {

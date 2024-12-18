@@ -12,4 +12,7 @@ contextBridge.exposeInMainWorld("electron", {
     ipcRenderer.send("file-path", filePath);
     return filePath;
   },
+  getAppIcon: async (filePath) => {
+    return await ipcRenderer.invoke("get-app-icon", filePath);
+  },
 });
