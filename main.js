@@ -85,16 +85,6 @@ app.on("ready", () => {
   tray = new Tray(path.join(__dirname, "public", "app-icon.png"));
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: "Resetta dock",
-      click: () => {
-        const filePath = path.join(__dirname, "apps.json");
-        fs.writeFileSync(filePath, JSON.stringify([]));
-        if (mainWindow) {
-          mainWindow.webContents.send("apps-cleared");
-        }
-      },
-    },
-    {
       label: "Esci",
       click: () => {
         app.quit();
