@@ -11,9 +11,12 @@
     <div class="flex space-x-4">
       <div
         *ngFor="let app of apps"
-        class="w-12 h-16 bg-gray-700 rounded-lg flex flex-col items-center justify-center hover:scale-110 transform transition hover:bg-gray-600"
+        class="w-12 h-16 bg-gray-700 rounded-lg flex flex-col items-center justify-center hover:scale-110 transform transition hover:bg-gray-600 relative"
         (click)="openApp(app)"
       >
+        <button class="remove-button" (click)="removeApp(app, $event)">
+          &times;
+        </button>
         <img [src]="app.icon" alt="{{ app.name }}" class="w-8 h-8 mb-1" />
         <p class="text-white truncate text-xs text-center">
           {{ app.name }}

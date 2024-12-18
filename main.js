@@ -14,15 +14,22 @@ const fs = require("fs");
 const ws = require("windows-shortcuts");
 
 let mainWindow;
+let tray;
 
-const createWindow = () => {
-  const primaryDisplay = screen.getPrimaryDisplay();
-  const { width } = primaryDisplay.workAreaSize;
+const createWindow = (displayId) => {
+  const display =
+    screen.getAllDisplays().find((d) => d.id === displayId) ||
+    screen.getPrimaryDisplay();
+  const { x, y, width, height } = display.workArea;
   const windowWidth = 600;
 
+  console.log(
+    `Creating window on display ${displayId}: x=${x}, y=${y}, width=${width}, height=${height}`
+  );
+
   mainWindow = new BrowserWindow({
-    x: Math.round((width - windowWidth) / 2),
-    y: 0,
+    x: Math.round(x + (width - windowWidth) / 2),
+    y: y, // Usa la coordinata y così com'è, anche se è negativa
     width: windowWidth,
     height: 80,
     frame: false,
@@ -31,6 +38,7 @@ const createWindow = () => {
     resizable: false,
     movable: false,
     focusable: false,
+    icon: path.join(__dirname, "public", "app-icon.png"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -39,36 +47,51 @@ const createWindow = () => {
   });
 
   mainWindow.loadFile(path.join(__dirname, "dist/dock-app/browser/index.html"));
-  // mainWindow.webContents.openDevTools();
 
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
 
   setInterval(() => {
-    const cursor = screen.getCursorScreenPoint();
-    const display = screen.getDisplayNearestPoint(cursor);
-    const bounds = display.bounds;
+    if (mainWindow) {
+      const cursor = screen.getCursorScreenPoint();
+      const display = screen.getDisplayNearestPoint(cursor);
+      const bounds = display.bounds;
 
-    mainWindow.webContents.send("mouse-position", {
-      x: cursor.x,
-      y: cursor.y,
-      screenBounds: bounds,
-    });
+      console.log(`Mouse position: x=${cursor.x}, y=${cursor.y}`);
+      console.log(
+        `Nearest display: x=${bounds.x}, y=${bounds.y}, width=${bounds.width}, height=${bounds.height}`
+      );
+
+      mainWindow.webContents.send("mouse-position", {
+        x: cursor.x,
+        y: cursor.y,
+        screenBounds: bounds,
+      });
+    }
   }, 300);
+};
+
+const getDisplays = () => {
+  return screen.getAllDisplays().map((display, index) => ({
+    id: display.id,
+    name: `Schermo ${index + 1}`,
+  }));
 };
 
 app.on("ready", () => {
   createWindow();
 
-  const tray = new Tray(path.join(__dirname, "public", "app-icon.png"));
+  tray = new Tray(path.join(__dirname, "public", "app-icon.png"));
   const contextMenu = Menu.buildFromTemplate([
     {
       label: "Resetta dock",
       click: () => {
         const filePath = path.join(__dirname, "apps.json");
         fs.writeFileSync(filePath, JSON.stringify([]));
-        mainWindow.webContents.send("apps-cleared");
+        if (mainWindow) {
+          mainWindow.webContents.send("apps-cleared");
+        }
       },
     },
     {
@@ -76,6 +99,22 @@ app.on("ready", () => {
       click: () => {
         app.quit();
       },
+    },
+    {
+      label: "Scegli schermo",
+      submenu: getDisplays().map((display) => ({
+        label: display.name,
+        click: () => {
+          if (mainWindow) {
+            mainWindow.close();
+            mainWindow.on("closed", () => {
+              createWindow(display.id);
+            });
+          } else {
+            createWindow(display.id);
+          }
+        },
+      })),
     },
   ]);
   tray.setToolTip("Dock App");
@@ -118,65 +157,8 @@ ipcMain.handle("read-apps", async () => {
 
 ipcMain.handle("write-apps", async (event, apps) => {
   const filePath = path.join(__dirname, "apps.json");
-  fs.writeFileSync(filePath, JSON.stringify(apps, null, 2));
+  fs.writeFileSync(filePath, JSON.stringify(apps));
 });
-
-const getIconPathFromShortcut = (filePath) => {
-  return new Promise((resolve, reject) => {
-    if (fs.lstatSync(filePath).isDirectory()) {
-      // Se il file è una cartella, utilizza l'icona della cartella
-      resolve(path.join(__dirname, "public", "folder-icon.png"));
-    } else if (filePath.endsWith(".exe") || filePath.endsWith(".ico")) {
-      if (fs.existsSync(filePath)) {
-        if (filePath.endsWith(".exe")) {
-          const dir = path.dirname(filePath);
-          const icoFiles = fs
-            .readdirSync(dir)
-            .filter((file) => file.endsWith(".ico"));
-          if (icoFiles.length > 0) {
-            resolve(path.join(dir, icoFiles[0]));
-          } else {
-            resolve(filePath);
-          }
-        } else {
-          resolve(filePath);
-        }
-      } else {
-        console.warn(
-          `Icona non trovata per ${filePath}, utilizzo dell'icona predefinita.`
-        );
-        resolve(null);
-      }
-    } else {
-      ws.query(filePath, (err, options) => {
-        if (err) {
-          console.error("Errore nell'ottenere l'icona:", err);
-          resolve(null);
-        } else {
-          let iconPath = options.icon || options.target;
-          console.log(`Icon path for ${filePath}: ${iconPath}`);
-          if (iconPath && fs.existsSync(iconPath)) {
-            if (iconPath.endsWith(".exe")) {
-              const dir = path.dirname(iconPath);
-              const icoFiles = fs
-                .readdirSync(dir)
-                .filter((file) => file.endsWith(".ico"));
-              if (icoFiles.length > 0) {
-                iconPath = path.join(dir, icoFiles[0]);
-              }
-            }
-            resolve(iconPath);
-          } else {
-            console.warn(
-              `Icona non trovata per ${filePath}, utilizzo dell'icona predefinita.`
-            );
-            resolve(null);
-          }
-        }
-      });
-    }
-  });
-};
 
 ipcMain.handle("get-app-icon", async (event, filePath, isDirectory) => {
   try {

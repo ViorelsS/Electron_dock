@@ -26,6 +26,7 @@ export class DockComponent implements OnInit {
   isInteracting = false;
   isDragging = false;
   apps: App[] = [];
+  readonly maxApps = 9;
 
   constructor(private zone: NgZone, private cdr: ChangeDetectorRef) {
     if (window.electron) {
@@ -33,8 +34,8 @@ export class DockComponent implements OnInit {
         this.zone.run(() => {
           const { x, y, screenBounds } = data;
 
-          const threshold = 50;
-          const centerWidth = screenBounds.width / 3;
+          const threshold = 16;
+          const centerWidth = screenBounds.width / 5;
 
           const isInTopCenter =
             y <= screenBounds.y + threshold &&
@@ -90,6 +91,11 @@ export class DockComponent implements OnInit {
     this.isDragging = false;
     this.isInteracting = false;
 
+    if (this.apps.length >= this.maxApps) {
+      alert('Hai raggiunto il numero massimo di applicazioni nella dock!');
+      return;
+    }
+
     if (event.dataTransfer && event.dataTransfer.files.length > 0) {
       const file = event.dataTransfer.files[0];
       const newPath = window.electron.getPathForFile(file);
@@ -126,5 +132,12 @@ export class DockComponent implements OnInit {
     } else {
       window.electron.ipcRenderer.send('open-folder', app.path);
     }
+  }
+
+  async removeApp(app: App, event: MouseEvent) {
+    event.stopPropagation();
+    this.apps = this.apps.filter((a) => a.path !== app.path);
+    await window.electron.ipcRenderer.invoke('write-apps', this.apps);
+    this.cdr.detectChanges();
   }
 }

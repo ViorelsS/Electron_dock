@@ -40,8 +40,6 @@ button:hover {
     255,
     0.1
   ); /* Evidenzia leggermente lo sfondo */
-  border: 2px dashed #fff; /* Mostra un bordo tratteggiato */
-  transition: background-color 0.3s ease;
 }
 
 .truncate {
@@ -49,4 +47,28 @@ button:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.remove-button {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: rgba(255, 255, 255, 0.8);
+  border: none;
+  color: black;
+  font-size: 12px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 2px;
+}
+
+.remove-button:hover {
+  background: rgba(255, 0, 0, 0.8);
+  color: white;
 }
