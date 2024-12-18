@@ -1,5 +1,10 @@
 {
   "name": "dock-app",
+  "description": "Dock app",
+  "author": {
+    "name": "Viorel",
+    "email": "viorelss@icloud.com"
+  },
   "version": "0.0.0",
   "main": "main.js",
   "scripts": {

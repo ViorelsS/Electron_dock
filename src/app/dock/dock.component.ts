@@ -9,8 +9,9 @@ import {
 
 interface App {
   name: string;
-  icon: string | 'assets/app-icon.png';
+  icon: string | 'app-icon.png';
   path: string;
+  isExecutable: boolean;
 }
 
 @Component({
@@ -57,6 +58,13 @@ export class DockComponent implements OnInit {
       this.apps = await window.electron.ipcRenderer.invoke('read-apps');
       this.cdr.detectChanges();
     }
+
+    window.electron.ipcRenderer.on('apps-cleared', () => {
+      this.zone.run(() => {
+        this.apps = [];
+        this.cdr.detectChanges();
+      });
+    });
   }
 
   onMouseEnter() {
@@ -93,12 +101,19 @@ export class DockComponent implements OnInit {
         return;
       }
 
-      const icon = await window.electron.getAppIcon(newPath);
+      const isDirectory = file.type === '' && file.size === 0;
+      const isExecutable =
+        file.name.endsWith('.lnk') || file.name.endsWith('.exe');
+
+      // Richiedi l'icona al processo principale
+      const icon = await window.electron.getAppIcon(newPath, isDirectory);
+
       console.log('New path: ', newPath);
       this.apps.push({
         name: file.name,
         path: newPath,
         icon: icon || 'assets/app-icon.png',
+        isExecutable: isExecutable,
       });
       await window.electron.ipcRenderer.invoke('write-apps', this.apps);
       this.cdr.detectChanges();
@@ -106,6 +121,10 @@ export class DockComponent implements OnInit {
   }
 
   openApp(app: App) {
-    window.electron.ipcRenderer.send('launch-app', app.path);
+    if (app.isExecutable) {
+      window.electron.ipcRenderer.send('launch-app', app.path);
+    } else {
+      window.electron.ipcRenderer.send('open-folder', app.path);
+    }
   }
 }
