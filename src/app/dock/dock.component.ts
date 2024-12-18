@@ -1,11 +1,11 @@
-import { CommonModule } from '@angular/common';
 import {
-  ChangeDetectorRef,
   Component,
-  HostListener,
-  NgZone,
   OnInit,
+  NgZone,
+  ChangeDetectorRef,
+  HostListener,
 } from '@angular/core';
+import { CommonModule } from '@angular/common';
 
 interface App {
   name: string;
@@ -19,7 +19,7 @@ interface App {
   standalone: true,
   imports: [CommonModule],
   templateUrl: './dock.component.html',
-  styleUrl: './dock.component.scss',
+  styleUrls: ['./dock.component.scss'],
 })
 export class DockComponent implements OnInit {
   isVisible = false;
@@ -27,12 +27,15 @@ export class DockComponent implements OnInit {
   isDragging = false;
   apps: App[] = [];
   readonly maxApps = 9;
+  currentDisplayId: number | null = null;
+  dockDisplayId: number | null = 1; // Aggiungi questa variabile
 
   constructor(private zone: NgZone, private cdr: ChangeDetectorRef) {
     if (window.electron) {
-      window.electron.ipcRenderer.on('mouse-position', (data) => {
+      window.electron.ipcRenderer.on('mouse-position', (event, data) => {
         this.zone.run(() => {
-          const { x, y, screenBounds } = data;
+          const { x, y, screenBounds, currentDisplayId } = data;
+          this.currentDisplayId = currentDisplayId;
 
           const threshold = 16;
           const centerWidth = screenBounds.width / 5;
@@ -42,15 +45,23 @@ export class DockComponent implements OnInit {
             x >= screenBounds.x + (screenBounds.width - centerWidth) / 2 &&
             x <= screenBounds.x + (screenBounds.width + centerWidth) / 2;
 
-          if (isInTopCenter || this.isInteracting) {
+          if (isInTopCenter && this.currentDisplayId === this.dockDisplayId) {
             this.isVisible = true;
-          } else {
+          } else if (!this.isInteracting) {
             this.isVisible = false;
           }
-
           this.cdr.detectChanges();
         });
       });
+
+      window.electron.ipcRenderer.on(
+        'dock-display-id',
+        (event, dockDisplayId) => {
+          this.zone.run(() => {
+            this.dockDisplayId = dockDisplayId;
+          });
+        }
+      );
     }
   }
 
@@ -77,6 +88,7 @@ export class DockComponent implements OnInit {
     this.isInteracting = false;
     this.isVisible = false;
   }
+
   @HostListener('dragover', ['$event'])
   onDragOver(event: DragEvent): void {
     event.preventDefault();

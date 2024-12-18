@@ -52,6 +52,10 @@ const createWindow = (displayId) => {
     mainWindow = null;
   });
 
+  mainWindow.webContents.on("did-finish-load", () => {
+    mainWindow.webContents.send("dock-display-id", displayId);
+  });
+
   setInterval(() => {
     if (mainWindow) {
       const cursor = screen.getCursorScreenPoint();
@@ -67,6 +71,7 @@ const createWindow = (displayId) => {
         x: cursor.x,
         y: cursor.y,
         screenBounds: bounds,
+        currentDisplayId: display.id, // Aggiungi l'ID dello schermo corrente
       });
     }
   }, 300);
