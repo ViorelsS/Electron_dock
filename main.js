@@ -23,13 +23,9 @@ const createWindow = (displayId) => {
   const { x, y, width, height } = display.workArea;
   const windowWidth = 600;
 
-  console.log(
-    `Creating window on display ${displayId}: x=${x}, y=${y}, width=${width}, height=${height}`
-  );
-
   mainWindow = new BrowserWindow({
     x: Math.round(x + (width - windowWidth) / 2),
-    y: y, // Usa la coordinata y così com'è, anche se è negativa
+    y: y,
     width: windowWidth,
     height: 80,
     frame: false,
@@ -58,11 +54,6 @@ const createWindow = (displayId) => {
       const display = screen.getDisplayNearestPoint(cursor);
       const bounds = display.bounds;
 
-      console.log(`Mouse position: x=${cursor.x}, y=${cursor.y}`);
-      console.log(
-        `Nearest display: x=${bounds.x}, y=${bounds.y}, width=${bounds.width}, height=${bounds.height}`
-      );
-
       mainWindow.webContents.send("mouse-position", {
         x: cursor.x,
         y: cursor.y,
@@ -84,6 +75,16 @@ app.on("ready", () => {
 
   tray = new Tray(path.join(__dirname, "public", "app-icon.png"));
   const contextMenu = Menu.buildFromTemplate([
+    {
+      label: "Resetta dock",
+      click: () => {
+        const filePath = path.join(__dirname, "apps.json");
+        fs.writeFileSync(filePath, JSON.stringify([]));
+        if (mainWindow) {
+          mainWindow.webContents.send("apps-cleared");
+        }
+      },
+    },
     {
       label: "Esci",
       click: () => {
@@ -159,10 +160,9 @@ ipcMain.handle("get-app-icon", async (event, filePath, isDirectory) => {
       iconPath = await getIconPathFromShortcut(filePath);
     }
     if (!iconPath) {
-      iconPath = path.join(__dirname, "public", "app-icon.png"); // Percorso dell'icona di default
+      iconPath = path.join(__dirname, "public", "app-icon.png");
     }
     const icon = nativeImage.createFromPath(iconPath);
-    console.log(`Icon data URL for ${filePath}: ${icon.toDataURL()}`);
     return icon.toDataURL();
   } catch (error) {
     console.error("Errore nell'ottenere l'icona:", error);
