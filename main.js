@@ -76,16 +76,6 @@ app.on("ready", () => {
   tray = new Tray(path.join(__dirname, "public", "app-icon.png"));
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: "Resetta dock",
-      click: () => {
-        const filePath = path.join(__dirname, "apps.json");
-        fs.writeFileSync(filePath, JSON.stringify([]));
-        if (mainWindow) {
-          mainWindow.webContents.send("apps-cleared");
-        }
-      },
-    },
-    {
       label: "Esci",
       click: () => {
         app.quit();
@@ -150,6 +140,63 @@ ipcMain.handle("write-apps", async (event, apps) => {
   const filePath = path.join(__dirname, "apps.json");
   fs.writeFileSync(filePath, JSON.stringify(apps));
 });
+
+const getIconPathFromShortcut = (filePath) => {
+  return new Promise((resolve, reject) => {
+    if (fs.lstatSync(filePath).isDirectory()) {
+      // Se il file è una cartella, utilizza l'icona della cartella
+      resolve(path.join(__dirname, "public", "folder-icon.png"));
+    } else if (filePath.endsWith(".exe") || filePath.endsWith(".ico")) {
+      if (fs.existsSync(filePath)) {
+        if (filePath.endsWith(".exe")) {
+          const dir = path.dirname(filePath);
+          const icoFiles = fs
+            .readdirSync(dir)
+            .filter((file) => file.endsWith(".ico"));
+          if (icoFiles.length > 0) {
+            resolve(path.join(dir, icoFiles[0]));
+          } else {
+            resolve(filePath);
+          }
+        } else {
+          resolve(filePath);
+        }
+      } else {
+        console.warn(
+          `Icona non trovata per ${filePath}, utilizzo dell'icona predefinita.`
+        );
+        resolve(null);
+      }
+    } else {
+      ws.query(filePath, (err, options) => {
+        if (err) {
+          console.error("Errore nell'ottenere l'icona:", err);
+          resolve(null);
+        } else {
+          let iconPath = options.icon || options.target;
+          console.log(`Icon path for ${filePath}: ${iconPath}`);
+          if (iconPath && fs.existsSync(iconPath)) {
+            if (iconPath.endsWith(".exe")) {
+              const dir = path.dirname(iconPath);
+              const icoFiles = fs
+                .readdirSync(dir)
+                .filter((file) => file.endsWith(".ico"));
+              if (icoFiles.length > 0) {
+                iconPath = path.join(dir, icoFiles[0]);
+              }
+            }
+            resolve(iconPath);
+          } else {
+            console.warn(
+              `Icona non trovata per ${filePath}, utilizzo dell'icona predefinita.`
+            );
+            resolve(null);
+          }
+        }
+      });
+    }
+  });
+};
 
 ipcMain.handle("get-app-icon", async (event, filePath, isDirectory) => {
   try {
