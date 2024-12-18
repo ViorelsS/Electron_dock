@@ -86,18 +86,12 @@ export class DockComponent {
   @HostListener('drop', ['$event'])
   onDrop(event: DragEvent) {
     event.preventDefault();
+    this.isDragging = false;
 
-    const files = event.dataTransfer?.files;
-    if (files?.length) {
-      const fileList = [];
-      for (let i = 0; i < files.length; i++) {
-        fileList.push({
-          name: files[i].name,
-          path: (files[i] as any).path || '',
-        });
-      }
-      console.log('NEL COMPONENT', fileList);
-      (window as any).electron.ipcRenderer.send('file-dropped', fileList);
+    if (event.dataTransfer && event.dataTransfer.files.length > 0) {
+      const file = event.dataTransfer.files[0];
+      const newPath = window.electron.getPathForFile(file);
+      console.log('New path: ', newPath);
     }
   }
 }

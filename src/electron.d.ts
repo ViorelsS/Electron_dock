@@ -4,7 +4,7 @@ export interface ElectronAPI {
     on: (channel: string, listener: (...args: any[]) => void) => void;
     invoke: (channel: string, data?: any) => Promise<any>;
   };
-  showFilePath: (data?: any) => Promise<string>;
+  getPathForFile: (data: any) => string;
 }
 
 declare global {
